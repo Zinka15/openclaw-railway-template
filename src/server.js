@@ -887,7 +887,7 @@ app.get("/setup/export", requireSetupAuth, async (_req, res) => {
 const proxy = httpProxy.createProxyServer({
   target: GATEWAY_TARGET,
   ws: true,
-  xfwd: true,
+  xfwd: false,
 });
 
 proxy.on("error", (err, _req, _res) => {
@@ -898,16 +898,17 @@ proxy.on("error", (err, _req, _res) => {
 proxy.on("proxyReq", (proxyReq, req, res) => {
   console.log(`[proxy] HTTP ${req.method} ${req.url} - injecting token: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...`);
   proxyReq.setHeader("Authorization", `Bearer ${OPENCLAW_GATEWAY_TOKEN}`);
+  proxyReq.setHeader("X-Forwarded-For", "127.0.0.1");
+  proxyReq.setHeader("X-Real-IP", "127.0.0.1");
 });
 
-// Log WebSocket upgrade proxy events (token is injected via headers option in server.on("upgrade"))
+// Log WebSocket upgrade proxy events
 proxy.on("proxyReqWs", (proxyReq, req, socket, options, head) => {
   console.log(`[proxy-event] WebSocket proxyReqWs event fired for ${req.url}`);
   console.log(`[proxy-event] Headers:`, JSON.stringify(proxyReq.getHeaders()));
 });
 
 app.use(async (req, res) => {
-  // If not configured, force users to /setup for any non-setup routes.
   if (!isConfigured() && !req.path.startsWith("/setup")) {
     return res.redirect("/setup");
   }
@@ -923,18 +924,15 @@ app.use(async (req, res) => {
     }
   }
 
-  // Proxy to gateway (auth token injected via proxyReq event)
   return proxy.web(req, res, { target: GATEWAY_TARGET });
 });
 
-// Create HTTP server from Express app
 const server = app.listen(PORT, () => {
   console.log(`[wrapper] listening on port ${PORT}`);
   console.log(`[wrapper] setup wizard: http://localhost:${PORT}/setup`);
   console.log(`[wrapper] configured: ${isConfigured()}`);
 });
 
-// Handle WebSocket upgrades
 server.on("upgrade", async (req, socket, head) => {
   if (!isConfigured()) {
     socket.destroy();
@@ -947,19 +945,19 @@ server.on("upgrade", async (req, socket, head) => {
     return;
   }
 
-  // Inject auth token via headers option (req.headers modification doesn't work for WS)
   console.log(`[ws-upgrade] Proxying WebSocket upgrade with token: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...`);
 
   proxy.ws(req, socket, head, {
     target: GATEWAY_TARGET,
     headers: {
       Authorization: `Bearer ${OPENCLAW_GATEWAY_TOKEN}`,
+      "X-Forwarded-For": "127.0.0.1",
+      "X-Real-IP": "127.0.0.1",
     },
   });
 });
 
 process.on("SIGTERM", () => {
-  // Best-effort shutdown
   try {
     if (gatewayProc) gatewayProc.kill("SIGTERM");
   } catch {
@@ -967,3 +965,4 @@ process.on("SIGTERM", () => {
   }
   process.exit(0);
 });
+
