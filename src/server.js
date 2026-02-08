@@ -188,6 +188,14 @@ async function startGateway() {
 
   console.log(`[gateway] ========== TOKEN SYNC COMPLETE ==========`);
 
+  // Fix: Set trustedProxies so gateway trusts Railway proxy
+  await runCmd(
+    OPENCLAW_NODE,
+    clawArgs(["config", "set", "--json", "gateway.trustedProxies", '["127.0.0.1/8","::1/128","0.0.0.0/0"]']),
+  );
+  console.log(`[gateway] Set trustedProxies for Railway proxy`);
+
+
   const args = [
     "gateway",
     "run",
