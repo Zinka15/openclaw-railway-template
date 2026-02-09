@@ -894,18 +894,29 @@ proxy.on("error", (err, _req, _res) => {
   console.error("[proxy]", err);
 });
 
-// Inject auth token into HTTP proxy requests
+// Inject auth token and clean Railway proxy headers for HTTP
 proxy.on("proxyReq", (proxyReq, req, res) => {
-  console.log(`[proxy] HTTP ${req.method} ${req.url} - injecting token: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...`);
+  proxyReq.removeHeader("x-forwarded-for");
+  proxyReq.removeHeader("x-real-ip");
+  proxyReq.removeHeader("x-forwarded-proto");
+  proxyReq.removeHeader("x-forwarded-host");
+  proxyReq.removeHeader("x-forwarded-port");
   proxyReq.setHeader("Authorization", `Bearer ${OPENCLAW_GATEWAY_TOKEN}`);
   proxyReq.setHeader("X-Forwarded-For", "127.0.0.1");
   proxyReq.setHeader("X-Real-IP", "127.0.0.1");
+  console.log(`[proxy] HTTP ${req.method} ${req.url} - headers cleaned`);
 });
 
-// Log WebSocket upgrade proxy events
+// Clean Railway proxy headers for WebSocket
 proxy.on("proxyReqWs", (proxyReq, req, socket, options, head) => {
-  console.log(`[proxy-event] WebSocket proxyReqWs event fired for ${req.url}`);
-  console.log(`[proxy-event] Headers:`, JSON.stringify(proxyReq.getHeaders()));
+  proxyReq.removeHeader("x-forwarded-for");
+  proxyReq.removeHeader("x-real-ip");
+  proxyReq.removeHeader("x-forwarded-proto");
+  proxyReq.removeHeader("x-forwarded-host");
+  proxyReq.removeHeader("x-forwarded-port");
+  proxyReq.setHeader("X-Forwarded-For", "127.0.0.1");
+  proxyReq.setHeader("X-Real-IP", "127.0.0.1");
+  console.log(`[proxy-event] WebSocket headers cleaned for ${req.url}`);
 });
 
 app.use(async (req, res) => {
@@ -945,7 +956,16 @@ server.on("upgrade", async (req, socket, head) => {
     return;
   }
 
-  console.log(`[ws-upgrade] Proxying WebSocket upgrade with token: ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}...`);
+  // Clean Railway headers BEFORE proxy
+  delete req.headers["x-forwarded-for"];
+  delete req.headers["x-real-ip"];
+  delete req.headers["x-forwarded-proto"];
+  delete req.headers["x-forwarded-host"];
+  delete req.headers["x-forwarded-port"];
+  req.headers["x-forwarded-for"] = "127.0.0.1";
+  req.headers["x-real-ip"] = "127.0.0.1";
+
+  console.log(`[ws-upgrade] WebSocket upgrade with cleaned headers`);
 
   proxy.ws(req, socket, head, {
     target: GATEWAY_TARGET,
@@ -965,4 +985,3 @@ process.on("SIGTERM", () => {
   }
   process.exit(0);
 });
-
