@@ -1,0 +1,25 @@
+{
+  "configVersion": 1,
+  "mode": "local",
+  "workspace": "/app",
+  "setupComplete": true,
+  "authChoice": "openai-api-key",
+  "gateway": {
+    "port": 18789,
+    "bind": "0.0.0.0",
+    "authMode": "token",
+    "tailscaleMode": "off"
+  },
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "openai/gpt-4o-mini"
+      }
+    }
+  },
+  "providers": {
+    "openai": {
+      "apiKey": "env:OPENAI_API_KEY"
+    }
+  }
+}
