@@ -173,13 +173,14 @@ async function startGateway() {
     console.log(`[gateway]   Config:  ${configToken?.slice(0, 16)}... (len: ${configToken?.length || 0})`);
 
     if (configToken !== OPENCLAW_GATEWAY_TOKEN) {
-      console.error(`[gateway] ✗ Token mismatch detected!`);
-      console.error(`[gateway]   Full wrapper: ${OPENCLAW_GATEWAY_TOKEN}`);
-      console.error(`[gateway]   Full config:  ${configToken || 'null'}`);
-      throw new Error(
-        `Token mismatch: wrapper has ${OPENCLAW_GATEWAY_TOKEN.slice(0, 16)}... but config has ${(configToken || 'null')?.slice?.(0, 16)}...`
-      );
+      console.error(`[gateway] ✗ Token mismatch detected, forcing wrapper token into config`);
+      config.gateway = config.gateway || {};
+      config.gateway.auth = config.gateway.auth || {};
+      config.gateway.auth.token = OPENCLAW_GATEWAY_TOKEN;
+      fs.writeFileSync(configPath(), JSON.stringify(config, null, 2));
+      console.log(`[gateway] ✓ Token forced into config file`);
     }
+
     console.log(`[gateway] ✓ Token verification PASSED`);
   } catch (err) {
     console.error(`[gateway] ERROR: Token verification failed: ${err}`);
