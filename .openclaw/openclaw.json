@@ -1,14 +1,21 @@
 {
   "configVersion": 1,
   "mode": "local",
-  "workspace": "/app",
+  "workspace": "/app/.openclaw/workspace",
   "setupComplete": true,
   "authChoice": "openai-api-key",
   "gateway": {
     "port": 18789,
-    "bind": "0.0.0.0",
-    "authMode": "token",
-    "tailscaleMode": "off"
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "mySecretToken12345"
+    },
+    "tailscaleMode": "off",
+    "controlUi": {
+      "allowInsecureAuth": true
+    },
+    "trustedProxies": ["127.0.0.1/8", "::1/128", "0.0.0.0/0"]
   },
   "agents": {
     "defaults": {
