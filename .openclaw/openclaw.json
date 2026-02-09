@@ -1,17 +1,11 @@
 {
-  "configVersion": 1,
-  "mode": "local",
-  "workspace": "/app/.openclaw/workspace",
-  "setupComplete": true,
-  "authChoice": "openai-api-key",
   "gateway": {
     "port": 18789,
     "bind": "loopback",
     "auth": {
       "mode": "token",
-      "token": "mySecretToken12345"
+      "token": "mypass123"
     },
-    "tailscaleMode": "off",
     "controlUi": {
       "allowInsecureAuth": true
     },
@@ -22,11 +16,6 @@
       "model": {
         "primary": "openai/gpt-4o-mini"
       }
-    }
-  },
-  "providers": {
-    "openai": {
-      "apiKey": "env:OPENAI_API_KEY"
     }
   }
 }
