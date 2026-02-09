@@ -907,16 +907,17 @@ proxy.on("proxyReq", (proxyReq, req, res) => {
   console.log(`[proxy] HTTP ${req.method} ${req.url} - headers cleaned`);
 });
 
-// Clean Railway proxy headers for WebSocket
+// Inject auth token and clean Railway proxy headers for WebSocket
 proxy.on("proxyReqWs", (proxyReq, req, socket, options, head) => {
   proxyReq.removeHeader("x-forwarded-for");
   proxyReq.removeHeader("x-real-ip");
   proxyReq.removeHeader("x-forwarded-proto");
   proxyReq.removeHeader("x-forwarded-host");
   proxyReq.removeHeader("x-forwarded-port");
+  proxyReq.setHeader("Authorization", `Bearer ${OPENCLAW_GATEWAY_TOKEN}`);
   proxyReq.setHeader("X-Forwarded-For", "127.0.0.1");
   proxyReq.setHeader("X-Real-IP", "127.0.0.1");
-  console.log(`[proxy-event] WebSocket headers cleaned for ${req.url}`);
+  console.log(`[proxy-event] WebSocket headers cleaned and token injected for ${req.url}`);
 });
 
 app.use(async (req, res) => {
@@ -965,15 +966,14 @@ server.on("upgrade", async (req, socket, head) => {
   req.headers["x-forwarded-for"] = "127.0.0.1";
   req.headers["x-real-ip"] = "127.0.0.1";
 
-  console.log(`[ws-upgrade] WebSocket upgrade with cleaned headers`);
+  // CRITICAL FIX: Inject auth token directly into request headers
+  // http-proxy ignores the headers option for WebSocket upgrades
+  req.headers["authorization"] = `Bearer ${OPENCLAW_GATEWAY_TOKEN}`;
+
+  console.log(`[ws-upgrade] WebSocket upgrade with token injected into req.headers`);
 
   proxy.ws(req, socket, head, {
     target: GATEWAY_TARGET,
-    headers: {
-      Authorization: `Bearer ${OPENCLAW_GATEWAY_TOKEN}`,
-      "X-Forwarded-For": "127.0.0.1",
-      "X-Real-IP": "127.0.0.1",
-    },
   });
 });
 
