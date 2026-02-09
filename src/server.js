@@ -894,19 +894,6 @@ proxy.on("error", (err, _req, _res) => {
   console.error("[proxy]", err);
 });
 
-// Inject auth token and clean Railway proxy headers for HTTP
-proxy.on("proxyReq", (proxyReq, req, res) => {
-  proxyReq.removeHeader("x-forwarded-for");
-  proxyReq.removeHeader("x-real-ip");
-  proxyReq.removeHeader("x-forwarded-proto");
-  proxyReq.removeHeader("x-forwarded-host");
-  proxyReq.removeHeader("x-forwarded-port");
-  proxyReq.setHeader("Authorization", `Bearer ${OPENCLAW_GATEWAY_TOKEN}`);
-  proxyReq.setHeader("X-Forwarded-For", "127.0.0.1");
-  proxyReq.setHeader("X-Real-IP", "127.0.0.1");
-  console.log(`[proxy] HTTP ${req.method} ${req.url} - headers cleaned`);
-});
-
 // Inject auth token and clean Railway proxy headers for WebSocket
 proxy.on("proxyReqWs", (proxyReq, req, socket, options, head) => {
   proxyReq.removeHeader("x-forwarded-for");
@@ -966,11 +953,15 @@ server.on("upgrade", async (req, socket, head) => {
   req.headers["x-forwarded-for"] = "127.0.0.1";
   req.headers["x-real-ip"] = "127.0.0.1";
 
-  // CRITICAL FIX: Inject auth token directly into request headers
-  // http-proxy ignores the headers option for WebSocket upgrades
+  // Inject auth token into Authorization header
   req.headers["authorization"] = `Bearer ${OPENCLAW_GATEWAY_TOKEN}`;
 
-  console.log(`[ws-upgrade] WebSocket upgrade with token injected into req.headers`);
+  // CRITICAL FIX: OpenClaw Gateway reads token from URL query parameter,
+  // NOT from Authorization header. Inject token into WebSocket URL.
+  const separator = req.url.includes("?") ? "&" : "?";
+  req.url = `${req.url}${separator}token=${encodeURIComponent(OPENCLAW_GATEWAY_TOKEN)}`;
+
+  console.log(`[ws-upgrade] WebSocket upgrade URL: ${req.url.replace(OPENCLAW_GATEWAY_TOKEN, OPENCLAW_GATEWAY_TOKEN.slice(0, 8) + '...')}`);
 
   proxy.ws(req, socket, head, {
     target: GATEWAY_TARGET,
